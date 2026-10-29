@@ -4,9 +4,9 @@ export function ensureDashboard(data:Data,on:string):Data{
  const [y,m]=on.slice(0,7).split('-').map(Number);const next=new Date(y,m,1);const nextMonth=`${next.getFullYear()}-${String(next.getMonth()+1).padStart(2,'0')}`;
  return ensure(ensure(data,on.slice(0,7)),nextMonth);
 }
-/** Show cycles only once their 15-day reminder window opens. History is untouched. */
+/** Show cycles only once their 24-day reminder window opens. History is untouched. */
 export function latestBills(data:Data,on:string):Bill[]{
- const end=new Date(on+'T12:00:00Z');end.setUTCDate(end.getUTCDate()+15);
+ const end=new Date(on+'T12:00:00Z');end.setUTCDate(end.getUTCDate()+24);
  const through=end.toISOString().slice(0,10);
  const result:Bill[]=[];
  for(const c of data.cards.filter(c=>!c.deleted&&!c.archived)){
