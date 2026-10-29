@@ -9,3 +9,5 @@ describe('simple payment reminders',()=>{
  it('does not duplicate the same payment date',()=>{const d=saveReminder(empty,c,'2026-11-03');expect(saveReminder(d,c,'2026-11-03').bills).toHaveLength(1)});
  it('rejects impossible payment dates',()=>{expect(()=>saveReminder(empty,c,'2026-02-30')).toThrow('valid payment')});
 });
+
+it('colour-only edits preserve estimated dates and paid records exactly',()=>{let d=saveReminder(empty,c,'2026-11-03');d.bills[0].status='paid';d=ensure(d,'2026-12');const estimate=d.bills.find(b=>b.dateKind==='estimated')!;const saved=saveReminder(d,{...d.cards[0],color:'#ff0000'},estimate.dueDate,estimate.id);expect(saved.bills).toEqual(d.bills);expect(saved.cards[0].color).toBe('#ff0000')});

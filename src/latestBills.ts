@@ -4,18 +4,20 @@ export function ensureDashboard(data:Data,on:string):Data{
  const [y,m]=on.slice(0,7).split('-').map(Number);const next=new Date(y,m,1);const nextMonth=`${next.getFullYear()}-${String(next.getMonth()+1).padStart(2,'0')}`;
  return ensure(ensure(data,on.slice(0,7)),nextMonth);
 }
-/** One latest supplied date per card; complete history stays in Data.bills. */
+/** Show cycles only once their 15-day reminder window opens. History is untouched. */
 export function latestBills(data:Data,on:string):Bill[]{
+ const end=new Date(on+'T12:00:00Z');end.setUTCDate(end.getUTCDate()+15);
+ const through=end.toISOString().slice(0,10);
  const result:Bill[]=[];
  for(const c of data.cards.filter(c=>!c.deleted&&!c.archived)){
-  const records=data.bills.filter(b=>!b.deleted&&b.cardId===c.id);
+  const records=data.bills.filter(b=>!b.deleted&&b.cardId===c.id&&b.dueDate<=through);
   const supplied=records.filter(b=>b.dateKind!=='estimated').sort((a,b)=>b.dueDate.localeCompare(a.dueDate)||b.updatedAt.localeCompare(a.updatedAt)||b.id.localeCompare(a.id));
   const estimates=records.filter(b=>b.dateKind==='estimated').sort((a,b)=>a.dueDate.localeCompare(b.dueDate)||a.id.localeCompare(b.id));
   let latest=supplied[0];
-  // A lone, unconfirmed historical import can advance to its next estimated reminder.
-  // Explicitly unpaid balances stay visible; navigating far into History cannot hide them.
-  if(!latest||(latest.dueDate<on&&((latest.status==='unknown'&&latest.source==='handwritten-schedule-2026')||(latest.status==='paid'&&latest.dueDate.slice(0,7)<on.slice(0,7))))){
-   latest=estimates.find(b=>b.dueDate>=on)||latest||estimates[estimates.length-1];
+  // A paid cycle advances only when the next cycle's reminder window opens.
+  // Explicit unpaid balances remain visible even when overdue.
+  if(!latest||latest.status==='paid'||(latest.dueDate<on&&latest.status==='unknown'&&latest.source==='handwritten-schedule-2026')){
+   latest=estimates.find(b=>b.dueDate>=on&&(!latest||b.dueDate>latest.dueDate))||latest;
   }
   if(latest)result.push(latest);
  }
