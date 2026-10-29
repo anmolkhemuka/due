@@ -1,0 +1,11 @@
+import 'fake-indexeddb/auto';import{describe,it,expect}from'vitest';import{nextReminder,saveReminder}from'./reminders';import{ensure,stamp,type Data,type Card}from'./model';
+const c:Card={id:'c',bank:'YES',name:'Bank',last4:'1234',statementDay:null,dueDay:3,color:'#7255f7',notes:'keep',archived:false,...stamp()};const empty:Data={schema:1,cards:[c],bills:[]};
+describe('simple payment reminders',()=>{
+ it('requires only a due date and creates no statement or amount',()=>{const d=saveReminder(empty,c,'2026-11-03');expect(d.bills[0]).toMatchObject({dueDate:'2026-11-03',statementDate:null,amountDue:null,status:'unknown',dateKind:'actual'});expect(d.cards[0].last4).toBe('1234')});
+ it('updates a due date without changing its history identity or payment record',()=>{const d=saveReminder(empty,c,'2026-11-03');const b=d.bills[0];b.status='paid';b.paidAt='2026-11-02T12:00:00Z';b.amountPaid=700;const result=saveReminder(d,c,'2026-11-04',b.id);expect(result.bills).toHaveLength(1);expect(result.bills[0]).toMatchObject({id:b.id,status:'paid',paidAt:b.paidAt,amountPaid:700,dueDate:'2026-11-04'})});
+ it('creates a separate monthly estimate without carrying paid status forward',()=>{const d=saveReminder(empty,c,'2026-11-03');d.bills[0].status='paid';const result=ensure(d,'2026-12');expect(result.bills.find(b=>b.dueDate==='2026-12-03')).toMatchObject({status:'unknown',dateKind:'estimated',statementDate:null});expect(result.bills[0].status).toBe('paid')});
+ it('keeps month-end estimates within February and does not assert an exact 30-day interval',()=>{const d=saveReminder(empty,c,'2026-01-31');const result=ensure(d,'2026-02');expect(result.bills.find(b=>b.dueDate.startsWith('2026-02'))?.dueDate).toBe('2026-02-28')});
+ it('chooses the nearest upcoming unpaid reminder, then the most recent overdue one',()=>{let d=saveReminder(empty,c,'2026-10-04');d=saveReminder(d,c,'2026-11-03');expect(nextReminder(d,c.id,'2026-10-29')?.dueDate).toBe('2026-11-03');expect(nextReminder(d,c.id,'2026-11-10')?.dueDate).toBe('2026-11-03')});
+ it('does not duplicate the same payment date',()=>{const d=saveReminder(empty,c,'2026-11-03');expect(saveReminder(d,c,'2026-11-03').bills).toHaveLength(1)});
+ it('rejects impossible payment dates',()=>{expect(()=>saveReminder(empty,c,'2026-02-30')).toThrow('valid payment')});
+});

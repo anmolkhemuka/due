@@ -1,0 +1,8 @@
+node_modules
+dist/
+*.tsbuildinfo
+.env*
+.openai/
+data/
+*.backup.json
+.DS_Store
