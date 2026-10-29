@@ -1,4 +1,4 @@
-import 'fake-indexeddb/auto';import{describe,it,expect}from'vitest';import{nextReminder,saveReminder}from'./reminders';import{ensure,stamp,type Data,type Card}from'./model';
+import 'fake-indexeddb/auto';import{describe,it,expect}from'vitest';import{nextReminder,saveReminder,saveCardDetails}from'./reminders';import{ensure,stamp,type Data,type Card}from'./model';
 const c:Card={id:'c',bank:'YES',name:'Bank',last4:'1234',statementDay:null,dueDay:3,color:'#7255f7',notes:'keep',archived:false,...stamp()};const empty:Data={schema:1,cards:[c],bills:[]};
 describe('simple payment reminders',()=>{
  it('requires only a due date and creates no statement or amount',()=>{const d=saveReminder(empty,c,'2026-11-03');expect(d.bills[0]).toMatchObject({dueDate:'2026-11-03',statementDate:null,amountDue:null,status:'unknown',dateKind:'actual'});expect(d.cards[0].last4).toBe('1234')});
@@ -11,3 +11,5 @@ describe('simple payment reminders',()=>{
 });
 
 it('colour-only edits preserve estimated dates and paid records exactly',()=>{let d=saveReminder(empty,c,'2026-11-03');d.bills[0].status='paid';d=ensure(d,'2026-12');const estimate=d.bills.find(b=>b.dateKind==='estimated')!;const saved=saveReminder(d,{...d.cards[0],color:'#ff0000'},estimate.dueDate,estimate.id);expect(saved.bills).toEqual(d.bills);expect(saved.cards[0].color).toBe('#ff0000')});
+
+it('editing card details never modifies any bill or recurrence setting',()=>{let d=ensure(saveReminder(empty,c,'2026-11-03'),'2026-12');d.bills[0].status='paid';const edited=saveCardDetails(d,{...d.cards[0],color:'#ff0000',name:'Renamed'});expect(edited.bills).toBe(d.bills);expect(edited.cards[0]).toMatchObject({name:'Renamed',color:'#ff0000',dueDay:d.cards[0].dueDay,recurringStart:d.cards[0].recurringStart})});

@@ -10,3 +10,8 @@ export function saveReminder(data:Data,card:Card,due:string,billId?:string):Data
  const b:Bill=existing?(existing.dueDate===due?existing:{...existing,dueDate:due,dateKind:'actual',...stamp()}):{id:`${card.id}:manual:${due}`,cardId:card.id,cycleId:`manual:${due}`,statementDate:null,dueDate:due,dateKind:'actual',source:'manual',amountDue:null,status:'unknown',paidAt:null,amountPaid:null,reference:'',cardLabel:`${card.bank} ${card.name}${card.last4?' • '+card.last4:''}`.trim(),...stamp()};
  return {...data,cards:data.cards.some(x=>x.id===c.id)?data.cards.map(x=>x.id===c.id?c:x):[...data.cards,c],bills:existing?data.bills.map(x=>x.id===b.id?b:x):[...data.bills,b]};
 }
+
+/** Card appearance edits must never touch bill dates or payment records. */
+export function saveCardDetails(data:Data,card:Card):Data{
+ return {...data,cards:data.cards.map(c=>c.id===card.id?{...card,...stamp()}:c)};
+}
