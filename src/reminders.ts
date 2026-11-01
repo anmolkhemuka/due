@@ -13,7 +13,7 @@ export function ensureNextReminders(data:Data,on:string):Data{
   const [y,m]=paid.dueDate.slice(0,7).split('-').map(Number);const next=new Date(Date.UTC(y,m,1));
   const afterPaid=next.toISOString().slice(0,7);const month=afterPaid>on.slice(0,7)?afterPaid:on.slice(0,7);
   // Legacy cards can lack a due rule. A payment-date reminder needs no statement date.
-  const prepared=ensure({...result,cards:[{...card,dueRule:card.dueRule||'provisional'}]},month);
+  const prepared=ensure({...result,cards:[{...card,dueRule:card.dueRule||'provisional'}]},month,true);
   result={...result,bills:prepared.bills};
  }
  return result;

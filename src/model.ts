@@ -7,11 +7,16 @@ export const stamp=()=>({updatedAt:new Date().toISOString(),op:crypto.randomUUID
 export const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 export const date=(y:number,m:number,d:number)=>`${y}-${String(m+1).padStart(2,'0')}-${String(Math.min(d,new Date(y,m+1,0).getDate())).padStart(2,'0')}`;
 export function cycle(card:Card,y:number,m:number):Bill {const statementDate=date(y,m,card.statementDay??1);const offset=card.dueDay<=(card.statementDay??1)?1:0;const due=new Date(y,m+offset,1);const cycleId=statementDate.slice(0,7);return {id:`${card.id}:${cycleId}`,cardId:card.id,cycleId,statementDate,dueDate:date(due.getFullYear(),due.getMonth(),card.dueDay),amountDue:null,status:'unpaid',paidAt:null,amountPaid:null,reference:'',cardLabel:`${card.bank} ${card.name} • ${card.last4}`,...stamp()};}
-export function ensure(data:Data,month:string):Data {
+export function ensure(data:Data,month:string,refreshEstimates=false):Data {
  const [y,m]=month.split('-').map(Number);const bills=[...data.bills];
  for(const c of data.cards.filter(c=>!c.archived&&!c.deleted)){
   if(c.dueRule||c.statementDay===null){
    if(c.recurringStart&&month<c.recurringStart)continue;
+   // Unconfirmed, untouched generated estimates follow the current card rule after
+   // date corrections/sync. Actual dates, balances and payment history never move.
+   const expected=date(y,m-1,c.dueRule==='last-day'?31:c.dueDay);
+   for(let i=0;i<bills.length;i++){const b=bills[i];if(refreshEstimates&&!b.deleted&&b.cardId===c.id&&b.dueDate.slice(0,7)===month&&b.dateKind==='estimated'&&b.source==='recurring-rule'&&b.status==='unknown'&&b.amountDue===null&&b.amountPaid===null&&b.paidAt===null&&!b.reference&&b.dueDate!==expected)bills[i]={...b,dueDate:expected,...stamp()};}
+
    if(bills.some(b=>!b.deleted&&b.cardId===c.id&&b.dueDate.slice(0,7)===month))continue;
    const baseId=`${c.id}:expected:${month}`;let id=baseId;let suffix=1;
    // A corrected date may have moved this ID into another month. Keep its history

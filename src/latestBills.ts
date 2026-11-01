@@ -4,7 +4,7 @@ import {ensureNextReminders} from './reminders';
 export function ensureDashboard(data:Data,on:string):Data{
  const [y,m]=on.slice(0,7).split('-').map(Number);const next=new Date(y,m,1);const nextMonth=`${next.getFullYear()}-${String(next.getMonth()+1).padStart(2,'0')}`;
  const prepared=ensureNextReminders(data,on);
- return ensureNextReminders(ensure(ensure(prepared,on.slice(0,7)),nextMonth),on);
+ return ensureNextReminders(ensure(ensure(prepared,on.slice(0,7),true),nextMonth,true),on);
 }
 /** Show cycles only once their 24-day reminder window opens. History is untouched. */
 export function latestBills(data:Data,on:string):Bill[]{
