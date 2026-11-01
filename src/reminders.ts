@@ -1,7 +1,22 @@
-import {stamp,type Data,type Card,type Bill} from './model';
+import {ensure,stamp,type Data,type Card,type Bill} from './model';
 export function nextReminder(data:Data,cardId:string,on:string):Bill|undefined{
  const open=data.bills.filter(b=>b.cardId===cardId&&!b.deleted&&b.status!=='paid');
  return open.filter(b=>b.dueDate>=on).sort((a,b)=>a.dueDate.localeCompare(b.dueDate))[0]||open.sort((a,b)=>b.dueDate.localeCompare(a.dueDate))[0];
+}
+/** Always prepare one open monthly reminder after the latest paid cycle. */
+export function ensureNextReminders(data:Data,on:string):Data{
+ let result=data;
+ for(const card of data.cards.filter(c=>!c.deleted&&!c.archived)){
+  const records=result.bills.filter(b=>b.cardId===card.id&&!b.deleted);
+  const paid=records.filter(b=>b.status==='paid').sort((a,b)=>b.dueDate.localeCompare(a.dueDate))[0];
+  if(!paid||records.some(b=>b.status!=='paid'&&b.dueDate>paid.dueDate))continue;
+  const [y,m]=paid.dueDate.slice(0,7).split('-').map(Number);const next=new Date(Date.UTC(y,m,1));
+  const afterPaid=next.toISOString().slice(0,7);const month=afterPaid>on.slice(0,7)?afterPaid:on.slice(0,7);
+  // Legacy cards can lack a due rule. A payment-date reminder needs no statement date.
+  const prepared=ensure({...result,cards:[{...card,dueRule:card.dueRule||'provisional'}]},month);
+  result={...result,bills:prepared.bills};
+ }
+ return result;
 }
 /** Cards retain their last saved date when every known bill has been paid. */
 export function cardReminder(data:Data,cardId:string,on:string):Bill|undefined{
@@ -10,7 +25,8 @@ export function cardReminder(data:Data,cardId:string,on:string):Bill|undefined{
 /** Correct the reminder without losing payment history, even when already paid. */
 export function updateReminder(data:Data,bill:Bill,fields:Partial<Bill>,on:string):Data{
  const current=cardReminder(data,bill.cardId,on);
- return {...data,cards:fields.dueDate&&current?.id===bill.id?data.cards.map(c=>c.id===bill.cardId?{...c,dueDay:Number(fields.dueDate!.slice(8)),dueRule:'provisional' as const,...stamp()}:c):data.cards,bills:data.bills.map(b=>b.id===bill.id?{...b,...fields,...stamp()}:b)};
+ const updated={...data,cards:fields.dueDate&&current?.id===bill.id?data.cards.map(c=>c.id===bill.cardId?{...c,dueDay:Number(fields.dueDate!.slice(8)),dueRule:'provisional' as const,...stamp()}:c):data.cards,bills:data.bills.map(b=>b.id===bill.id?{...b,...fields,...stamp()}:b)};
+ return ensureNextReminders(updated,on);
 }
 export function saveReminder(data:Data,card:Card,due:string,billId?:string):Data{
  if(!/^\d{4}-\d{2}-\d{2}$/.test(due)||new Date(due+'T12:00:00Z').toISOString().slice(0,10)!==due)throw Error('Enter a valid payment due date');

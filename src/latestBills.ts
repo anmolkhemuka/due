@@ -1,8 +1,10 @@
 import {ensure,type Bill,type Data} from './model';
+import {ensureNextReminders} from './reminders';
 /** Prepare the current/next month without modifying any existing obligation. */
 export function ensureDashboard(data:Data,on:string):Data{
  const [y,m]=on.slice(0,7).split('-').map(Number);const next=new Date(y,m,1);const nextMonth=`${next.getFullYear()}-${String(next.getMonth()+1).padStart(2,'0')}`;
- return ensure(ensure(data,on.slice(0,7)),nextMonth);
+ const prepared=ensureNextReminders(data,on);
+ return ensureNextReminders(ensure(ensure(prepared,on.slice(0,7)),nextMonth),on);
 }
 /** Show cycles only once their 24-day reminder window opens. History is untouched. */
 export function latestBills(data:Data,on:string):Bill[]{

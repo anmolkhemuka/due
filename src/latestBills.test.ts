@@ -21,3 +21,7 @@ describe('latest payment dates checklist',()=>{
 
 it('hides future confirmed dates too, including previously promoted estimates',()=>{const d=fixture();expect(latestBills(d,'2032-04-25').some(b=>b.dueDate>'2032-05-19')).toBe(false)});
 it('opens the next cycle exactly 24 days before due, preserving paid history',()=>{let d=fixture();d.bills[1].status='paid';d=ensureDashboard(d,'2032-05-17');expect(latestBills(d,'2032-05-17')[0].id).toBe(d.bills[1].id);expect(latestBills(d,'2032-05-18')[0]).toMatchObject({dueDate:'2032-06-11',status:'unknown'});expect(d.bills[1].status).toBe('paid')});
+
+it('prepares a next estimate for Cards but keeps it out of Bills until the 24-day window',()=>{let d=fixture();d.bills[1].status='paid';const next=ensureDashboard(d,'2032-04-25');expect(next.bills.some(b=>b.cardId===d.cards[0].id&&b.dueDate==='2032-06-11'&&b.dateKind==='estimated')).toBe(true);expect(latestBills(next,'2032-04-25')[0]).toEqual(d.bills[1]);expect(next.bills.find(b=>b.id===d.bills[1].id)?.status).toBe('paid')});
+
+it('prepares legacy paid-card estimates before statement-based generation can mislabel them',()=>{const d=fixture();d.cards[0].dueRule=undefined;d.cards[0].statementDay=20;d.bills[0].status='paid';d.bills[1].status='paid';const next=ensureDashboard(d,'2032-05-01');expect(next.bills.find(b=>b.cardId===d.cards[0].id&&b.dueDate==='2032-06-11')).toMatchObject({dateKind:'estimated',statementDate:null,status:'unknown'});expect(next.cards).toEqual(d.cards)});
