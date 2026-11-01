@@ -13,7 +13,11 @@ export function ensure(data:Data,month:string):Data {
   if(c.dueRule||c.statementDay===null){
    if(c.recurringStart&&month<c.recurringStart)continue;
    if(bills.some(b=>!b.deleted&&b.cardId===c.id&&b.dueDate.slice(0,7)===month))continue;
-   const id=`${c.id}:expected:${month}`;if(bills.some(b=>b.id===id))continue;
+   const baseId=`${c.id}:expected:${month}`;let id=baseId;let suffix=1;
+   // A corrected date may have moved this ID into another month. Keep its history
+   // and allocate a new reminder identity; explicit deletion still suppresses it.
+   while(bills.some(b=>b.id===id&&!b.deleted))id=`${baseId}:replacement:${suffix++}`;
+   if(bills.some(b=>b.id===id&&b.deleted))continue;
    bills.push({id,cardId:c.id,cycleId:`expected:${month}`,statementDate:null,dueDate:date(y,m-1,c.dueRule==='last-day'?31:c.dueDay),dateKind:'estimated',source:'recurring-rule',amountDue:null,status:'unknown',paidAt:null,amountPaid:null,reference:'',cardLabel:`${c.bank} ${c.name}${c.last4?' • '+c.last4:''}`,...stamp()});
   }else for(let offset=-1;offset<=0;offset++){const d=new Date(y,m-1+offset,1);const b=cycle(c,d.getFullYear(),d.getMonth());if(!bills.some(x=>x.id===b.id))bills.push(b);}
  }
